@@ -11,7 +11,8 @@ struct Args {
 }
 
 fn parse_whitespace_lists(input: String) -> (Vec<i64>, Vec<i64>) {
-    let contents = std::fs::read_to_string(input).expect("Should have been able to read the file");
+    let contents = std::fs::read_to_string(input.clone())
+        .expect(format!("Unable to read file ->{}<-", input.clone()).as_str());
 
     let mut left: Vec<i64> = vec![];
     let mut right: Vec<i64> = vec![];
