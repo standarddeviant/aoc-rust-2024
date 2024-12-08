@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::RandomState;
 
+use geo::geometry::{Coord, LineString};
 use itertools::Itertools;
 
 #[derive(Debug, Parser)]
@@ -13,8 +14,8 @@ struct Args {
     input: String,
 }
 
-#[derive(Copy, Clone, Debug)]
-struct Location(usize, usize);
+// #[derive(Copy, Clone, Debug)]
+// struct Coord(usize, usize);
 
 #[derive(Copy, Clone, Debug)]
 enum Quadrant {
@@ -32,10 +33,10 @@ enum Direction {
 }
 struct Day6 {
     map: Vec<Vec<char>>,
-    loc: Vec<usize>,
+    loc: Coord<usize>,
     dir: Direction,
-    turns: Vec<Location>,
-    blocks: Vec<Location>,
+    turns: Vec<Coord<usize>>,
+    blocks: Vec<Coord<usize>>,
 }
 
 fn parse_input(input: String) -> Day6 {
@@ -49,7 +50,7 @@ fn parse_input(input: String) -> Day6 {
 
     // let loc_set = HashSet::from(['>', 'v', '<', '^']);
     let mut map: Vec<Vec<char>> = vec![];
-    let mut loc: Vec<usize> = vec![0, 0];
+    let mut loc: Coord<usize> = Coord::<usize>::zero();
     let mut dir: Direction = Direction::Up;
     // let re = Regex::new(r"\d+").unwrap();
 
@@ -61,8 +62,8 @@ fn parse_input(input: String) -> Day6 {
         if let Some(loc_col) = line.chars().position(|x| dirlu.contains_key(&x)) {
             let tmp: &Direction = dirlu.get(&cvec[loc_col]).unwrap();
             dir = tmp.clone();
-            loc[0] = row;
-            loc[1] = loc_col;
+            loc.x = row;
+            loc.y = loc_col;
         }
         map.push(line.chars().collect());
     }
@@ -84,12 +85,12 @@ fn print_d6(d6: &Day6) {
     }
 }
 
-fn mid_tri(tri: Vec<&Location>) -> Option<Vec<&Location>> {
+fn mid_tri(tri: Vec<&Coord<usize>>) -> Option<Vec<&Coord<usize>>> {
     let mut w = tri.clone(); // work var
 
     for _rot_ix in 0..3 {
-        let chk1_a = w[1].0 == w[0].0 && w[1].1 == w[2].1;
-        let chk1_b = w[1].0 == w[2].0 && w[1].1 == w[0].1;
+        let chk1_a = w[1].x == w[0].x && w[1].y == w[2].y;
+        let chk1_b = w[1].x == w[2].x && w[1].y == w[0].y;
         if chk1_a || chk1_b {
             return Some(w);
         }
@@ -100,24 +101,24 @@ fn mid_tri(tri: Vec<&Location>) -> Option<Vec<&Location>> {
     None
 }
 
-fn mid_tri_quad(mt: &Vec<Location>) -> Option<Quadrant> {
-    if mt[0].0 == mt[1].0 && mt[1].1 == mt[2].1 {
+fn mid_tri_quad(mt: &Vec<Coord<usize>>) -> Option<Quadrant> {
+    if mt[0].x == mt[1].x && mt[1].y == mt[2].y {
         // 0,1 same rows
         // 1,2 same cols
-    } else if mt[0].1 == mt[1].1 && mt[1].0 == mt[2].0 {
+    } else if mt[0].y == mt[1].y && mt[1].x == mt[2].x {
         // 0,1 same cols
         // 1,2 same rows
     }
     None
 }
 
-// fn mid_tri_is_loopable(tri: Vec<Location>, blocks: Vec<Location>) {
+// fn mid_tri_is_loopable(tri: Vec<Coord>, blocks: Vec<Coord>) {
 //
 // }
 
 enum Move {
-    Cardinal(Vec<usize>),
-    Rotate(Vec<usize>, Vec<usize>),
+    Cardinal(Coord<usize>),
+    Rotate(Coord<usize>, Coord<usize>, Direction),
     Done,
 }
 
@@ -141,43 +142,47 @@ fn apply_move(mut d6: &mut Day6) -> Move {
 
     // check if we're at the edge, and get next char if not
     let mut next: char = '~';
-    let loc_ch = d6.map[d6.loc[0]][d6.loc[1]];
+    let loc_ch = d6.map[d6.loc.x][d6.loc.y];
 
-    let mut next_loc: Vec<usize> = vec![0, 0];
+    let mut next_loc: Coord<usize> = Coord::<usize> { x: 0, y: 0 };
     if '>' == loc_ch {
-        if d6.loc[1] >= ncols - 1 {
+        if d6.loc.y as usize >= ncols - 1 {
             return Move::Done; // all done
         }
-        next_loc[0] = d6.loc[0];
-        next_loc[1] = d6.loc[1] + 1;
+        next_loc.x = d6.loc.x;
+        next_loc.y = d6.loc.y + 1;
     } else if '<' == loc_ch {
-        if d6.loc[1] <= 0 {
+        if d6.loc.y <= 0 {
             return Move::Done; // all done
         }
-        next_loc[0] = d6.loc[0];
-        next_loc[1] = d6.loc[1] - 1;
+        next_loc.x = d6.loc.x;
+        next_loc.y = d6.loc.y - 1;
     }
     if 'v' == loc_ch {
-        if d6.loc[0] >= nrows - 1 {
+        if d6.loc.x as usize >= nrows - 1 {
             return Move::Done; // all done
         }
-        next_loc[0] = d6.loc[0] + 1;
-        next_loc[1] = d6.loc[1];
+        next_loc.x = d6.loc.x + 1;
+        next_loc.y = d6.loc.y;
     } else if '^' == loc_ch {
-        if d6.loc[0] <= 0 {
+        if d6.loc.x <= 0 {
             return Move::Done; // all done
         }
-        next_loc[0] = d6.loc[0] - 1;
-        next_loc[1] = d6.loc[1];
+        next_loc.x = d6.loc.x - 1;
+        next_loc.y = d6.loc.y;
     }
 
-    let next = d6.map[next_loc[0]][next_loc[1]];
+    let next = d6.map[next_loc.x][next_loc.y];
     // check if we should rotate and count that as a separate, distinct move
     if '#' == next {
         // apply rotation here
         let new_loc_ch = turn_right.get(&loc_ch).unwrap();
-        d6.map[d6.loc[0]][d6.loc[1]] = new_loc_ch.clone();
-        return Move::Rotate(d6.loc.clone(), next_loc.clone());
+        d6.map[d6.loc.x as usize][d6.loc.y as usize] = new_loc_ch.clone();
+        return Move::Rotate(
+            d6.loc.clone(),
+            next_loc.clone(),
+            dirlu.get(&loc_ch).unwrap().clone(),
+        );
     }
 
     // proceed knowing that...
@@ -188,24 +193,24 @@ fn apply_move(mut d6: &mut Day6) -> Move {
     // swap next and loc_ch to 'move'
     match loc_ch {
         '>' => {
-            d6.map[d6.loc[0]][d6.loc[1]] = next;
-            d6.map[d6.loc[0]][d6.loc[1] + 1] = loc_ch;
-            d6.loc[1] += 1;
+            d6.map[d6.loc.x as usize][d6.loc.y as usize] = next;
+            d6.map[d6.loc.x as usize][d6.loc.y as usize + 1] = loc_ch;
+            d6.loc.y += 1;
         }
         '<' => {
-            d6.map[d6.loc[0]][d6.loc[1]] = next;
-            d6.map[d6.loc[0]][d6.loc[1] - 1] = loc_ch;
-            d6.loc[1] -= 1;
+            d6.map[d6.loc.x as usize][d6.loc.y as usize] = next;
+            d6.map[d6.loc.x as usize][d6.loc.y as usize - 1] = loc_ch;
+            d6.loc.y -= 1;
         }
         'v' => {
-            d6.map[d6.loc[0]][d6.loc[1]] = next;
-            d6.map[d6.loc[0] + 1][d6.loc[1]] = loc_ch;
-            d6.loc[0] += 1;
+            d6.map[d6.loc.x as usize][d6.loc.y as usize] = next;
+            d6.map[d6.loc.x as usize + 1][d6.loc.y as usize] = loc_ch;
+            d6.loc.x += 1;
         }
         '^' => {
-            d6.map[d6.loc[0]][d6.loc[1]] = next;
-            d6.map[d6.loc[0] - 1][d6.loc[1]] = loc_ch;
-            d6.loc[0] -= 1;
+            d6.map[d6.loc.x as usize][d6.loc.y as usize] = next;
+            d6.map[d6.loc.x as usize - 1][d6.loc.y as usize] = loc_ch;
+            d6.loc.x -= 1;
         }
         _ => {
             eprintln!("THIS SHOULD NOT HAPPEN!");
@@ -227,23 +232,27 @@ fn main() {
     println!("args = {args:#?}");
 
     let mut d6 = parse_input(args.input);
+    let mut lines: Vec<(Coord<usize>, Coord<usize>, Direction)> = vec![];
 
-    let mut set1 = HashSet::from([(d6.loc[0], d6.loc[1])]);
+    let mut set1 = HashSet::from([(d6.loc.x as usize, d6.loc.y as usize)]);
     // let mut blocks: Vec<(usize, usize)> = vec![];
     // let mut rots: Vec<(usize, usize)> = vec![];
-    let mut p1: Vec<(usize, usize)> = vec![(d6.loc[0], d6.loc[1])];
+    let mut p1: Vec<Coord<usize>> = vec![d6.loc.clone()];
+
+    let mut prev_turn: Coord<usize> = d6.loc;
     loop {
         // print_d6(&d6);
         match apply_move(&mut d6) {
             Move::Cardinal(new_loc) => {
-                assert!(new_loc.len() == 2);
-                set1.insert((new_loc[0], new_loc[1]));
-                p1.push((new_loc[0], new_loc[1]));
+                set1.insert((new_loc.x as usize, new_loc.y as usize));
+                p1.push(new_loc);
             }
-            Move::Rotate(rot, block) => {
+            Move::Rotate(rot, _block, dir) => {
                 // blocks.insert((block[0], block[1]));
-                d6.turns.push(Location(rot[0], rot[1]));
-                d6.blocks.push(Location(block[0], block[1]));
+                d6.turns.push(rot);
+                lines.push((prev_turn, rot, dir));
+                prev_turn = rot;
+                // d6.blocks.push(Coord(block[0], block[1]));
             }
             Move::Done => {
                 break;
@@ -255,10 +264,10 @@ fn main() {
 
     // day2, examine the 'turns' and 'blocks' ...
     let mut sum2 = 0;
-    let blocks: Vec<Location> = d6.blocks.clone();
+    let blocks: Vec<Coord<usize>> = d6.blocks.clone();
     // into_iter().collect();
     let turns = d6.turns.clone();
-    let mut tri_common: Vec<Vec<Location>> = vec![];
+    let mut tri_common: Vec<Vec<Coord<usize>>> = vec![];
     for tri in turns.clone().iter().combinations(3) {
         if let Some(mt) = mid_tri(tri.clone()) {
             println!("common joint found: {mt:?}");
@@ -269,12 +278,105 @@ fn main() {
     }
 
     for mt in tri_common {
-        match mid_tri_quad(mt) {
-            Quadrant::TopLeft => {}
-            Quadrant::TopRight => {}
-            Quadrant::BottomLeft => {}
-            Quadrant::BottomRight => {}
-        }
+        let block_checks: Vec<Coord<usize>> = match mid_tri_quad(&mt) {
+            Some(Quadrant::TopLeft) => {
+                //  *---*#
+                //  #
+                //  *---*#
+                //  ?   |
+                //  ?   |
+                // O?---*
+                //      #
+                vec![
+                    Coord::<usize> {
+                        x: mt[0].x - 1,
+                        y: mt[0].y,
+                    },
+                    Coord::<usize> {
+                        x: mt[1].x,
+                        y: mt[1].y + 1,
+                    },
+                    Coord::<usize> {
+                        x: mt[2].x + 1,
+                        y: mt[2].y,
+                    },
+                ]
+            }
+            Some(Quadrant::TopRight) => {
+                //
+                //  *---*#
+                //  #
+                //  *---*#
+                //  ?   |
+                //  ?   |
+                // O?---*
+                //      #
+                vec![
+                    Coord::<usize> {
+                        x: mt[0].x - 1,
+                        y: mt[0].y,
+                    },
+                    Coord::<usize> {
+                        x: mt[1].x,
+                        y: mt[1].y + 1,
+                    },
+                    Coord::<usize> {
+                        x: mt[2].x + 1,
+                        y: mt[2].y,
+                    },
+                ]
+            }
+            Some(Quadrant::BottomLeft) => {
+                //  #
+                //  *---*#
+                //  ?   |
+                //  ?   |
+                // O?---*
+                //      #
+                vec![
+                    Coord::<usize> {
+                        x: mt[0].x - 1,
+                        y: mt[0].y,
+                    },
+                    Coord::<usize> {
+                        x: mt[1].x,
+                        y: mt[1].y + 1,
+                    },
+                    Coord::<usize> {
+                        x: mt[2].x + 1,
+                        y: mt[2].y,
+                    },
+                ]
+            }
+            Some(Quadrant::BottomRight) => {
+                //  *---*#
+                //  O
+                //  *???*#
+                //  ?   |
+                //  |   |
+                // #*---M
+                //      #
+                vec![
+                    Coord::<usize> {
+                        x: mt[0].x - 1,
+                        y: mt[0].y,
+                    },
+                    Coord::<usize> {
+                        x: mt[1].x,
+                        y: mt[1].y + 1,
+                    },
+                    Coord::<usize> {
+                        x: mt[2].x + 1,
+                        y: mt[2].y,
+                    },
+                ]
+            }
+            _ => vec![],
+        };
+
+        // block_checks
+        println!("block_checks = {block_checks:?}");
+
         // if tri_is_loopable(j, tri, blocks) {}
         println!("looking at blocks around this triple...");
         println!("mt = {mt:?}");
