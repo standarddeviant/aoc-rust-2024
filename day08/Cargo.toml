@@ -1,0 +1,12 @@
+[package]
+name = "day08"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = {version = "4.5.15", features = ["derive"]}
+geo = "0.29"
+geo-types = "0.7"
+itertools = "0.13"
+regex = {version = "1.11.1"}
+
