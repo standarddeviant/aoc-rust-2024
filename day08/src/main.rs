@@ -49,7 +49,7 @@ fn parse_map(input: String) -> Map {
     Map { map, locs }
 }
 
-fn anode_locs(boundn: i64, p: Coord<i64>, q: Coord<i64>) -> Vec<Coord<i64>> {
+fn anode_locs_1(boundn: i64, p: Coord<i64>, q: Coord<i64>) -> Vec<Coord<i64>> {
     // NOTE: use i64 to handle overflow here
     // NOTE: usize is very convenient everywhere else for indexing
     let z1: Coord<i64> = p + p - q;
@@ -66,6 +66,57 @@ fn anode_locs(boundn: i64, p: Coord<i64>, q: Coord<i64>) -> Vec<Coord<i64>> {
     out
 }
 
+fn anode_locs_2(boundn: i64, p: Coord<i64>, q: Coord<i64>) -> Vec<Coord<i64>> {
+    // println!("\n>>>> P = {p:?}, Q = {q:?}");
+    // NOTE: use i64 to handle overflow here
+    let mut out: Vec<Coord<i64>> = vec![];
+
+    // p-to-out-the-box
+    let mut z = p;
+    let d = p - q;
+    loop {
+        let keep_going = 0 <= z.x && z.x < boundn && 0 <= z.y && z.y < boundn;
+        if !keep_going {
+            // println!("    BAILING ON {z:?}");
+            break;
+        }
+        // println!("from-p: p = {p:?}, z = {z:?}");
+        out.push(z);
+        z = z + d;
+    }
+
+    // q-to-out-the-box
+    z = q;
+    let d = q - p;
+    loop {
+        let keep_going = 0 <= z.x && z.x < boundn && 0 <= z.y && z.y < boundn;
+        if !keep_going {
+            // println!("    BAILING ON {z:?}");
+            break;
+        }
+        // println!("from-q: q = {p:?}, z = {z:?}");
+        out.push(z);
+        z = z + d;
+    }
+
+    // println!("out = {out:?}");
+    out
+}
+
+fn print_anodes(anodes: &HashSet<Coord<i64>>) {
+    let mut check: Vec<Coord<i64>> = anodes.clone().iter().map(|a| *a).collect();
+    check.sort_by(|a, b| {
+        if Ordering::Equal == a.x.cmp(&b.x) {
+            return a.y.cmp(&b.y);
+        } else {
+            return a.x.cmp(&b.x);
+        }
+    });
+    for tmp in check {
+        println!("({}, {})", tmp.x, tmp.y);
+    }
+}
+
 fn main() {
     let args = Args::parse();
     let m: Map = parse_map(args.input);
@@ -78,40 +129,33 @@ fn main() {
     println!("ncols = {ncols}");
     assert!(nrows == ncols);
 
-    let bounds: Polygon<i64> = polygon![
-        (x: -1_i64, y: -1_i64), // top-left
-        (x: ncols , y: -1_i64), // top-right
-        (x: ncols , y: nrows), // bottom-right
-        (x: -1_i64, y: nrows), // bottom-left
-    ];
+    // let bounds: Polygon<i64> = polygon![
+    //     (x: -1_i64, y: -1_i64), // top-left
+    //     (x: ncols , y: -1_i64), // top-right
+    //     (x: ncols , y: nrows), // bottom-right
+    //     (x: -1_i64, y: nrows), // bottom-left
+    // ];
     // let msz = (m.map.len(), m.map[0].len());
     for k in m.locs.keys() {
         let vset = m.locs.get(&k).unwrap().clone();
         for pair in vset.iter().combinations(2) {
-            println!("{k} : pair = {pair:?}");
-            for anode in anode_locs(nrows, pair[0].clone(), pair[1].clone()) {
+            // println!("{k} : pair = {pair:?}");
+            for anode in anode_locs_1(nrows, pair[0].clone(), pair[1].clone()) {
                 anodes.insert(anode);
             }
         }
     }
-
-    let mut check: Vec<Coord<i64>> = anodes.clone().iter().map(|a| *a).collect();
-    // check.sort_by(|);
-    check.sort_by(|a, b| {
-        if Ordering::Equal == a.x.cmp(&b.x) {
-            return a.y.cmp(&b.y);
-        } else {
-            return a.x.cmp(&b.x);
-        }
-    });
-    for tmp in check {
-        println!("({}, {})", tmp.x, tmp.y);
-    }
-
-    // println!("check = {check:#?}");
-    // for an in &anodes {
-    //     println!("an = {an:?}");
-    // }
-
     println!("day08, part1 = {}", anodes.len());
+
+    let mut anodes2: HashSet<Coord<i64>> = HashSet::default();
+    for k in m.locs.keys() {
+        let vset = m.locs.get(&k).unwrap().clone();
+        for pair in vset.iter().combinations(2) {
+            for anode in anode_locs_2(nrows, pair[0].clone(), pair[1].clone()) {
+                anodes2.insert(anode);
+            }
+        }
+    }
+    // print_anodes(&anodes2);
+    println!("day08, part2 = {}", anodes2.len());
 }
