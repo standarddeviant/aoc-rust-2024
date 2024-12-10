@@ -1,4 +1,5 @@
 use clap::Parser;
+use geo::Line;
 use regex::{Captures, Match, Regex, RegexSet};
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::VecDeque;
@@ -33,10 +34,10 @@ enum Direction {
 }
 struct Day6 {
     map: Vec<Vec<char>>,
-    loc: Coord<usize>,
+    loc: Coord<i64>,
     dir: Direction,
-    turns: Vec<Coord<usize>>,
-    blocks: Vec<Coord<usize>>,
+    path1: LineString<i64>,
+    blocks: Vec<Coord<i64>>,
 }
 
 fn parse_input(input: String) -> Day6 {
@@ -50,7 +51,7 @@ fn parse_input(input: String) -> Day6 {
 
     // let loc_set = HashSet::from(['>', 'v', '<', '^']);
     let mut map: Vec<Vec<char>> = vec![];
-    let mut loc: Coord<usize> = Coord::<usize>::zero();
+    let mut loc: Coord<i64> = Coord::<i64>::zero();
     let mut dir: Direction = Direction::Up;
     // let re = Regex::new(r"\d+").unwrap();
 
@@ -62,8 +63,8 @@ fn parse_input(input: String) -> Day6 {
         if let Some(loc_col) = line.chars().position(|x| dirlu.contains_key(&x)) {
             let tmp: &Direction = dirlu.get(&cvec[loc_col]).unwrap();
             dir = tmp.clone();
-            loc.x = row;
-            loc.y = loc_col;
+            loc.x = row as i64;
+            loc.y = loc_col as i64;
         }
         map.push(line.chars().collect());
     }
@@ -72,7 +73,7 @@ fn parse_input(input: String) -> Day6 {
         map,
         loc,
         dir,
-        turns: vec![],
+        path1: LineString::<i64>::new(vec![]),
         blocks: vec![],
     }
 }
@@ -117,8 +118,8 @@ fn mid_tri_quad(mt: &Vec<Coord<usize>>) -> Option<Quadrant> {
 // }
 
 enum Move {
-    Cardinal(Coord<usize>),
-    Rotate(Coord<usize>, Coord<usize>, Direction),
+    Cardinal(Coord<i64>),
+    Rotate(Coord<i64>, Coord<i64>, Direction),
     Done,
 }
 
@@ -142,9 +143,9 @@ fn apply_move(mut d6: &mut Day6) -> Move {
 
     // check if we're at the edge, and get next char if not
     let mut next: char = '~';
-    let loc_ch = d6.map[d6.loc.x][d6.loc.y];
+    let loc_ch = d6.map[d6.loc.x as usize][d6.loc.y as usize];
 
-    let mut next_loc: Coord<usize> = Coord::<usize> { x: 0, y: 0 };
+    let mut next_loc: Coord<i64> = Coord::<i64>::zero();
     if '>' == loc_ch {
         if d6.loc.y as usize >= ncols - 1 {
             return Move::Done; // all done
@@ -172,7 +173,7 @@ fn apply_move(mut d6: &mut Day6) -> Move {
         next_loc.y = d6.loc.y;
     }
 
-    let next = d6.map[next_loc.x][next_loc.y];
+    let next = d6.map[next_loc.x as usize][next_loc.y as usize];
     // check if we should rotate and count that as a separate, distinct move
     if '#' == next {
         // apply rotation here
@@ -221,25 +222,145 @@ fn apply_move(mut d6: &mut Day6) -> Move {
     return Move::Cardinal(d6.loc.clone());
 }
 
+fn p2_search_results(p1_path: &LineString<i64>) -> ;
+    let lines: Vec<Line<i64>> = p1_line_string.clone().lines().collect();
+    for (ix, line) in lines.iter().enumerate() {
+        println!("p1[{ix}] = {line:?}");
+    }
+
+
 // enum MoveResult {
 //
 // }
 
 // fn can_move(&mut m: &Vec<Vec<char>>)
 
+// fn old_part2() {
+//     let mut sum2 = 0;
+//     let blocks: Vec<Coord<usize>> = d6.blocks.clone();
+//     // into_iter().collect();
+//     let turns = d6.turns.clone();
+//     let mut tri_common: Vec<Vec<Coord<usize>>> = vec![];
+//     for tri in turns.clone().iter().combinations(3) {
+//         if let Some(mt) = mid_tri(tri.clone()) {
+//             println!("common joint found: {mt:?}");
+//             tri_common.push(mt.iter().map(|x| *x.clone()).collect());
+//         } else {
+//             println!("NO common joint of {tri:?}");
+//         }
+//     }
+//
+//     for mt in tri_common {
+//         let block_checks: Vec<Coord<usize>> = match mid_tri_quad(&mt) {
+//             Some(Quadrant::TopLeft) => {
+//                 //  *---*#
+//                 //  #
+//                 //  *---*#
+//                 //  ?   |
+//                 //  ?   |
+//                 // O?---*
+//                 //      #
+//                 vec![
+//                     Coord::<usize> {
+//                         x: mt[0].x - 1,
+//                         y: mt[0].y,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[1].x,
+//                         y: mt[1].y + 1,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[2].x + 1,
+//                         y: mt[2].y,
+//                     },
+//                 ]
+//             }
+//             Some(Quadrant::TopRight) => {
+//                 //
+//                 //  *---*#
+//                 //  #
+//                 //  *---*#
+//                 //  ?   |
+//                 //  ?   |
+//                 // O?---*
+//                 //      #
+//                 vec![
+//                     Coord::<usize> {
+//                         x: mt[0].x - 1,
+//                         y: mt[0].y,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[1].x,
+//                         y: mt[1].y + 1,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[2].x + 1,
+//                         y: mt[2].y,
+//                     },
+//                 ]
+//             }
+//             Some(Quadrant::BottomLeft) => {
+//                 //  #
+//                 //  *---*#
+//                 //  ?   |
+//                 //  ?   |
+//                 // O?---*
+//                 //      #
+//                 vec![
+//                     Coord::<usize> {
+//                         x: mt[0].x - 1,
+//                         y: mt[0].y,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[1].x,
+//                         y: mt[1].y + 1,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[2].x + 1,
+//                         y: mt[2].y,
+//                     },
+//                 ]
+//             }
+//             Some(Quadrant::BottomRight) => {
+//                 //  *---*#
+//                 //  O
+//                 //  *???*#
+//                 //  ?   |
+//                 //  |   |
+//                 // #*---M
+//                 //      #
+//                 vec![
+//                     Coord::<usize> {
+//                         x: mt[0].x - 1,
+//                         y: mt[0].y,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[1].x,
+//                         y: mt[1].y + 1,
+//                     },
+//                     Coord::<usize> {
+//                         x: mt[2].x + 1,
+//                         y: mt[2].y,
+//                     },
+//                 ]
+//             }
+//             _ => vec![],
+//         };
+//     }
+// }
+
 fn main() {
     let args = Args::parse();
     println!("args = {args:#?}");
 
     let mut d6 = parse_input(args.input);
-    let mut lines: Vec<(Coord<usize>, Coord<usize>, Direction)> = vec![];
+    // let mut lines_coords: Vec<(Coord<usize>, Coord<usize>, Direction)> = vec![];
 
     let mut set1 = HashSet::from([(d6.loc.x as usize, d6.loc.y as usize)]);
-    // let mut blocks: Vec<(usize, usize)> = vec![];
-    // let mut rots: Vec<(usize, usize)> = vec![];
-    let mut p1: Vec<Coord<usize>> = vec![d6.loc.clone()];
+    let mut p1: Vec<Coord<i64>> = vec![d6.loc.clone()];
+    let mut p1_turns: Vec<Coord<i64>> = vec![d6.loc.clone()];
 
-    let mut prev_turn: Coord<usize> = d6.loc;
+    // let mut prev_turn: Coord<i64> = d6.loc;
     loop {
         // print_d6(&d6);
         match apply_move(&mut d6) {
@@ -249,9 +370,11 @@ fn main() {
             }
             Move::Rotate(rot, _block, dir) => {
                 // blocks.insert((block[0], block[1]));
-                d6.turns.push(rot);
-                lines.push((prev_turn, rot, dir));
-                prev_turn = rot;
+                // d6.turns.push(rot);
+                // TODO: what to do w/ dir here?
+                // d6.path1.push(Line::<i64>::from([prev_turn, rot]));
+                p1_turns.push(rot);
+                // prev_turn = rot;
                 // d6.blocks.push(Coord(block[0], block[1]));
             }
             Move::Done => {
@@ -262,125 +385,8 @@ fn main() {
     println!("day06, part1 = {}", set1.len());
     // println!("day06, part1 = {???}");
 
-    // day2, examine the 'turns' and 'blocks' ...
-    let mut sum2 = 0;
-    let blocks: Vec<Coord<usize>> = d6.blocks.clone();
-    // into_iter().collect();
-    let turns = d6.turns.clone();
-    let mut tri_common: Vec<Vec<Coord<usize>>> = vec![];
-    for tri in turns.clone().iter().combinations(3) {
-        if let Some(mt) = mid_tri(tri.clone()) {
-            println!("common joint found: {mt:?}");
-            tri_common.push(mt.iter().map(|x| *x.clone()).collect());
-        } else {
-            println!("NO common joint of {tri:?}");
-        }
-    }
-
-    for mt in tri_common {
-        let block_checks: Vec<Coord<usize>> = match mid_tri_quad(&mt) {
-            Some(Quadrant::TopLeft) => {
-                //  *---*#
-                //  #
-                //  *---*#
-                //  ?   |
-                //  ?   |
-                // O?---*
-                //      #
-                vec![
-                    Coord::<usize> {
-                        x: mt[0].x - 1,
-                        y: mt[0].y,
-                    },
-                    Coord::<usize> {
-                        x: mt[1].x,
-                        y: mt[1].y + 1,
-                    },
-                    Coord::<usize> {
-                        x: mt[2].x + 1,
-                        y: mt[2].y,
-                    },
-                ]
-            }
-            Some(Quadrant::TopRight) => {
-                //
-                //  *---*#
-                //  #
-                //  *---*#
-                //  ?   |
-                //  ?   |
-                // O?---*
-                //      #
-                vec![
-                    Coord::<usize> {
-                        x: mt[0].x - 1,
-                        y: mt[0].y,
-                    },
-                    Coord::<usize> {
-                        x: mt[1].x,
-                        y: mt[1].y + 1,
-                    },
-                    Coord::<usize> {
-                        x: mt[2].x + 1,
-                        y: mt[2].y,
-                    },
-                ]
-            }
-            Some(Quadrant::BottomLeft) => {
-                //  #
-                //  *---*#
-                //  ?   |
-                //  ?   |
-                // O?---*
-                //      #
-                vec![
-                    Coord::<usize> {
-                        x: mt[0].x - 1,
-                        y: mt[0].y,
-                    },
-                    Coord::<usize> {
-                        x: mt[1].x,
-                        y: mt[1].y + 1,
-                    },
-                    Coord::<usize> {
-                        x: mt[2].x + 1,
-                        y: mt[2].y,
-                    },
-                ]
-            }
-            Some(Quadrant::BottomRight) => {
-                //  *---*#
-                //  O
-                //  *???*#
-                //  ?   |
-                //  |   |
-                // #*---M
-                //      #
-                vec![
-                    Coord::<usize> {
-                        x: mt[0].x - 1,
-                        y: mt[0].y,
-                    },
-                    Coord::<usize> {
-                        x: mt[1].x,
-                        y: mt[1].y + 1,
-                    },
-                    Coord::<usize> {
-                        x: mt[2].x + 1,
-                        y: mt[2].y,
-                    },
-                ]
-            }
-            _ => vec![],
-        };
-
-        // block_checks
-        println!("block_checks = {block_checks:?}");
-
-        // if tri_is_loopable(j, tri, blocks) {}
-        println!("looking at blocks around this triple...");
-        println!("mt = {mt:?}");
-    }
+    let p1_line_string = LineString::<i64>::from(p1_turns.clone());
+    let p2 = p2_search_results(p1_path);
 }
 
 // EOF
