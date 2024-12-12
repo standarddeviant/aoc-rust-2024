@@ -1,0 +1,16 @@
+[package]
+name = "day10"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = {version = "4.5.15", features = ["derive"]}
+# geo = "0.29"
+# geo-types = "0.7"
+env_logger = "0.11"
+itertools = "0.13"
+log = "0.4"
+regex = {version = "1.11.1"}
+ndarray = "0.16"
+num-traits = "0.2"
+
