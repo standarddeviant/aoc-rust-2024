@@ -1,11 +1,10 @@
 use clap::Parser;
 use itertools::Itertools;
-use ndarray::{concatenate, Array, Array2, Order};
-use regex::Regex;
-use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
-
 use log::{debug, info, trace};
+use petgraph::algo::all_simple_paths;
+use petgraph::prelude::DiGraphMap;
+use regex::Regex;
+use std::collections::HashSet;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -34,55 +33,6 @@ fn printm(m: &Vec<Vec<i64>>) {
         info!("{tmps}");
     }
 }
-
-fn printm_locs(m: &Vec<Vec<i64>>, locs: &Vec<(usize, usize)>) {
-    assert!(m.len() > 0);
-    let mut w = m.clone();
-    let (nr, nc) = (w.len(), w[0].len());
-    for r in 0..nr {
-        for c in 0..nc {
-            w[r][c] = -1;
-        }
-    }
-    for loc in locs {
-        w[loc.0][loc.0] = m[loc.0][loc.1];
-    }
-
-    for row in w {
-        let tmps: String = row
-            .iter()
-            .map(|&x| if x >= 0 { format!("{x}") } else { format!(".") })
-            .join("");
-        info!("{tmps}");
-    }
-}
-
-fn flatten<T>(nested: Vec<Vec<T>>) -> Vec<T> {
-    nested.into_iter().flatten().collect()
-}
-
-// fn vec2_to_arr2<T>(x: &Vec<Vec<T>>) -> Array2<T>
-// where
-//     T: std::clone::Clone,
-//     T: num_traits::identities::Zero,
-// {
-//     let nrows = x.len();
-//     let ncols = x[0].len();
-//     let sh = ((nrows, ncols), Order::RowMajor);
-//     let mut a2 = Array2::<T>::zeros((nrows, ncols));
-//     for r in 0..nrows {
-//         for c in 0..ncols {
-//             a2[r;c] = x[r][c];
-//         }
-//     }
-//
-//     a2
-// }
-
-// fn num_trails((r: usize, c: usize), m: &Vec<Vec<<i64>>) -> usize {
-//     let mut out = 0;
-//     out
-// }
 
 fn trace1(diff: i64, src: &(usize, usize), m: &Vec<Vec<i64>>) -> Vec<(usize, usize)> {
     assert!(m.len() > 0);
@@ -114,21 +64,43 @@ fn trace1(diff: i64, src: &(usize, usize), m: &Vec<Vec<i64>>) -> Vec<(usize, usi
     out
 }
 
-fn trace_from_starts(starts: &Vec<(usize, usize)>, m: &Vec<Vec<i64>>) -> usize {
-    let mut out = 0;
+fn trace_from_starts(starts: &Vec<(usize, usize)>, m: &Vec<Vec<i64>>) -> (usize, usize) {
+    // assert(m)
+    let mut out1 = 0;
+    let mut out2 = 0;
     for s in starts {
+        let mut g: DiGraphMap<(usize, usize), i32> = DiGraphMap::default();
         // let mut tracks: Vec<Vec<(usize, usize)>> = vec![vec![s.clone()]];
-        // NOTE: insert vec of 0s at index 0
+        // NOTE: here we insert vec of 0s at index 0
         let mut locs: Vec<Vec<(usize, usize)>> = vec![vec![s.clone()]];
+        let mut loc0: (usize, usize) = (0, 0);
+        // let mut ni_9s: Vec<NodeIndex> = vec![];
+        // let mut ni_2_loc = HashMap::<NodeIndex, (usize, usize)>::default();
 
-        // NOTE: insert vec of Xs at index X; X=1..9
+        // NOTE: here we insert vec of Xs at index X; X=1..9
         for next in 1..=9 {
             // debug!("next = {next}");
             let mut thisv: Vec<(usize, usize)> = vec![];
             // debug!("locs.len() = {}", locs.len());
             let lastv: &Vec<(usize, usize)> = &locs[next - 1];
-            for loc in 0..lastv.len() {
-                thisv.extend(trace1(1, &lastv[loc], &m));
+            for ix in 0..lastv.len() {
+                let from = lastv[ix];
+                let tos = trace1(1, &lastv[ix], &m);
+                thisv.extend(tos.clone()); // part1
+                g.add_node(lastv[ix]); // part2
+
+                // if next == 1, then there's only (1) 0-node in lastv[]
+                if next == 1 {
+                    loc0 = lastv[ix];
+                }
+                for to in tos {
+                    g.add_node(to);
+                    g.add_edge(lastv[ix], to, 1);
+                    debug!(
+                        "edge from {}::{:?} --> {}::{:?}",
+                        m[from.0][from.1], from, m[to.0][to.1], to,
+                    );
+                }
             }
             let vals: Vec<i64> = thisv.iter().map(|x| m[x.0][x.1]).collect();
             debug!("thisv (vals) = {:?}", vals);
@@ -143,12 +115,26 @@ fn trace_from_starts(starts: &Vec<(usize, usize)>, m: &Vec<Vec<i64>>) -> usize {
         debug!("nines.len() = {}", nines.len());
         debug!("nines = {:?}", locs[9]);
         debug!("s = {s:?}");
-        // printm_locs(&m, &flatten(locs));
-        // printm(&m);
-        out += nines.len();
-    }
+        out1 += nines.len();
 
-    out
+        for loc9 in nines {
+            let ways = all_simple_paths::<Vec<_>, _>(&g, loc0, loc9, 0, None).collect::<Vec<_>>();
+            debug!(
+                "found {} paths from {}::{:?} --> {}::{:?}",
+                ways.len(),
+                m[loc0.0][loc0.1],
+                loc0,
+                m[loc9.0][loc9.1],
+                loc9,
+            );
+
+            out2 += ways.len();
+        }
+        // println!("for zero @ {:?}:", locs[0][0]);
+        // println!("g = {g:?}");
+    } // NOTE: end for s in starts
+
+    (out1, out2)
 }
 
 fn main() {
@@ -179,6 +165,7 @@ fn main() {
     }
 
     // trace back from ends
-    let sum1 = trace_from_starts(&starts, &m);
+    let (sum1, sum2) = trace_from_starts(&starts, &m);
     println!("day10, part1 = {sum1}");
+    println!("day10, part2 = {sum2}");
 }
