@@ -1,3 +1,4 @@
+use regex::Regex;
 // use std::ops::BitXor
 // NOTE: To mix a value into the secret number...
 // 1. calculate the bitwise XOR of the given value and the secret number
@@ -50,14 +51,34 @@ fn evolve_basic_check() {
     }
 }
 
+fn parse_numbers(input: String) -> Vec<u64> {
+    let mut out: Vec<u64> = vec![];
+    let re = Regex::new(r"\d+").unwrap();
+
+    let contents = std::fs::read_to_string(input.clone())
+        .expect(format!("Unable to read file ->{}<-", input.clone()).as_str());
+    for line in contents.lines() {
+        let tmps: Vec<&str> = re.find_iter(line).map(|m| m.as_str()).collect();
+        let tmpi: Vec<u64> = tmps.iter().map(|s| s.parse::<u64>().unwrap()).collect();
+        out.extend(tmpi);
+    }
+
+    out
+}
+
 fn main() {
-    mix_prune_basic_check();
-    evolve_basic_check();
+    // mix_prune_basic_check();
+    // evolve_basic_check();
+
+    // NOTE: practice input
+    // let secrets = vec![1, 10, 100, 2024];
 
     let mut out_vec = vec![];
-    let practice_input = vec![1, 10, 100, 2024];
-    for pi in practice_input {
-        let mut tmp = pi;
+    let secrets = parse_numbers("input.txt".into());
+    println!("secrets.len() = {}", secrets.len());
+
+    for s in secrets {
+        let mut tmp = s;
         for _ix in 0..2000 {
             tmp = evolve(tmp);
         }
