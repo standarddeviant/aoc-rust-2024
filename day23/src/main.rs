@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
@@ -26,8 +27,8 @@ fn parse_connections(input: String) -> HashMap<String, HashSet<String>> {
 }
 
 fn main() {
-    // let cnx = parse_connections("practice.txt".into());
     let cnx = parse_connections("input.txt".into());
+    // let cnx = parse_connections("practice.txt".into());
     let mut trips: HashSet<(String, String, String)> = HashSet::default();
     for k1 in cnx.keys() {
         for k2 in &cnx[k1] {
@@ -52,4 +53,35 @@ fn main() {
     // println!("trips = {trips:?}");
     println!("trips.len() = {}", trips.len());
     println!("day23, part1 = {}", trips.len());
+
+    // part2 strategy: seed groups w/ len1 vectors and each key to each group iff it connects to
+    // all nodes already in group
+    let mut groups: Vec<Vec<String>> = vec![];
+    for k in cnx.keys() {
+        groups.push(vec![k.clone()]);
+    }
+    for (_ixk, k) in cnx.keys().enumerate() {
+        for ixg in 0..groups.len() {
+            let mut belongs = true;
+            for h in groups[ixg].clone() {
+                if !cnx[&h].contains(k) {
+                    belongs = false;
+                    break;
+                }
+            }
+            if belongs {
+                groups.get_mut(ixg).unwrap().push(k.clone());
+            }
+        }
+        // println!("{_ixk} : k = {k}, groups.len() = {:?}", groups.len());
+    }
+
+    groups.sort_by(|a, b| b.len().cmp(&a.len()));
+
+    // for (ixg, g) in groups.iter().enumerate() {
+    //     println!("{ixg} : {g:?}");
+    // }
+    let mut part2 = groups[0].clone();
+    part2.sort();
+    println!("day23, part2 = {}", part2.join(","));
 }
