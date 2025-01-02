@@ -1,3 +1,4 @@
+use ndarray::{prelude::*, ArcArray2};
 use num::complex::Complex;
 use regex::Regex;
 
@@ -23,6 +24,67 @@ fn parse_input(input: String) -> Vec<(Complex<i64>, Complex<i64>)> {
     out
 }
 
+fn show_positions(X: i64, Y: i64, pvec: &Vec<Complex<i64>>) {
+    println!("X = {X}, Y = {Y}");
+    let blank_line = vec![b' '; X as usize];
+    let mut m: Vec<Vec<u8>> = (0..Y).map(|_x| blank_line.clone()).collect();
+    for p in pvec {
+        let xix = p.re as usize;
+        let yix = p.im as usize;
+        m[yix][xix] = b'#';
+    }
+    for line in m {
+        println!("{}", String::from_utf8(line).unwrap());
+    }
+}
+
+fn score_position_adjacencies(X: i64, Y: i64, pvec: &Vec<Complex<i64>>) -> usize {
+    let mut a = ArcArray2::zeros(Ix2(Y as usize, X as usize));
+    // let mut m: Vec<Vec<u8>> = (0..Y).map(|_x| blank_line.clone()).collect();
+    for p in pvec {
+        let xix = p.re as usize;
+        let yix = p.im as usize;
+        a[Ix2(yix, xix)] = 1;
+    }
+    let mut score = 0;
+    for x in 1..X - 1 {
+        for y in 1..Y - 1 {
+            let (x, y) = (x as usize, y as usize);
+            if 0 == a[Ix2(y, x)] {
+                continue;
+            }
+
+            let mut neighbor = false;
+            // top row
+            neighbor |= 1 == a[Ix2(y - 1, x - 1)];
+            neighbor |= 1 == a[Ix2(y - 1, x - 0)];
+            neighbor |= 1 == a[Ix2(y - 1, x + 1)];
+
+            // sides
+            neighbor |= 1 == a[Ix2(y - 0, x - 1)];
+            neighbor |= 1 == a[Ix2(y - 0, x - 1)];
+
+            // bottom row
+            neighbor |= 1 == a[Ix2(y + 1, x - 1)];
+            neighbor |= 1 == a[Ix2(y + 1, x - 0)];
+            neighbor |= 1 == a[Ix2(y + 1, x + 1)];
+            if neighbor {
+                score += 1;
+            }
+        }
+    }
+
+    score
+}
+
+fn pause() {
+    println!("Press Enter...");
+    let mut guess = String::new();
+    std::io::stdin()
+        .read_line(&mut guess)
+        .expect("Failed to read line");
+}
+
 const XSIZE: i64 = 101;
 const YSIZE: i64 = 103;
 
@@ -45,7 +107,7 @@ fn main() {
     let nsec: i64 = 100;
     let mut quad_counts = [0, 0, 0, 0];
 
-    for pv in pv_vec {
+    for pv in pv_vec.clone() {
         let mut pnew = pv.0 + (nsec * pv.1);
         pnew.re = pnew.re.rem_euclid(X);
         pnew.im = pnew.im.rem_euclid(Y);
@@ -79,4 +141,27 @@ fn main() {
     println!("quad_counts = {quad_counts:?}");
     let ans1: i64 = quad_counts.iter().product();
     println!("day14, part1 = {ans1}");
+
+    // part2, diy scoring function with trial-and-error threshold (300)...
+    let mut pvec: Vec<Complex<i64>> = pv_vec.clone().iter().map(|pv| pv.0).collect();
+    let vvec: Vec<Complex<i64>> = pv_vec.clone().iter().map(|pv| pv.1).collect();
+    for ix in 0..100000 {
+        let score = score_position_adjacencies(X, Y, &pvec);
+
+        if score > 300 {
+            println!("score = {score}");
+            show_positions(X, Y, &pvec);
+
+            println!("day14, part2 = {ix}");
+            break;
+        }
+
+        // pause();
+        // iterate pvec
+        for pvix in 0..pvec.len() {
+            pvec[pvix] += vvec[pvix];
+            pvec[pvix].re = pvec[pvix].re.rem_euclid(X);
+            pvec[pvix].im = pvec[pvix].im.rem_euclid(Y);
+        }
+    }
 }
