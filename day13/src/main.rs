@@ -37,45 +37,18 @@ fn parse_input(input: String) -> Vec<Vec<(i64, i64)>> {
     out
 }
 
-fn min_cost(m: &Vec<(i64, i64)>) -> Option<i64> {
-    let mut nb: i64 = 0;
-    let mut na: i64 = 0;
+fn min_cost(m: &Vec<(i64, i64)>, part2: bool) -> Option<i64> {
     let a = m[0].clone();
     let b = m[1].clone();
-    let p = m[2].clone();
+    let mut p = m[2].clone();
 
-    // Ax = b -> x = A^-1 * b
+    if part2 {
+        p.0 += 10000000000000;
+        p.1 += 10000000000000;
+    }
 
-    // if (a.1 as f64 / a.0 as f64) == (b.1 as f64 / b.0 as f64) {
-    //     println!("DANGER! a = {a:?}, b = {b:?}");
-    // }
-
-    // nb = min(p.0 / b.0, p.1 / b.1) + 1;
-    // nb = min(nb, 100);
-    // // println!("starting nb = {nb}");
-    //
-    // loop {
-    //     let r0 = (p.0 - nb * b.0) % a.0;
-    //     let r1 = (p.0 - nb * b.0) % a.0;
-    //     if 0 == r0 && 0 == r1 {
-    //         // println!("found min!");
-    //         break;
-    //     }
-    //
-    //     if nb == 0 {
-    //         return i64::max_value();
-    //     }
-    //
-    //     nb -= 1;
-    // }
-
-    // na = (p.0 - (nb * b.0)) / a.0;
-    // if na > 100 {
-    //     return i64::max_value();
-    // }
-
-    let mut amat = Matrix2::new(a.0 as f64, b.0 as f64, a.1 as f64, b.1 as f64);
-    let mut b = Vector2::new(p.0 as f64, p.1 as f64);
+    let amat = Matrix2::new(a.0 as f64, b.0 as f64, a.1 as f64, b.1 as f64);
+    let b = Vector2::new(p.0 as f64, p.1 as f64);
     let decomp = amat.lu();
     let x = decomp.solve(&b);
     if x.is_none() {
@@ -99,25 +72,23 @@ fn min_cost(m: &Vec<(i64, i64)>) -> Option<i64> {
 fn main() {
     let mut costs: Vec<i64> = vec![];
     let machines = parse_input("input.txt".into());
-    // let machines = parse_input("practice.txt".into());
-    // println!("machines = {machines:?}");
+
     for m in &machines {
-        if let Some(mc) = min_cost(m) {
+        if let Some(mc) = min_cost(m, false) {
             // println!("mc = {mc}");
             costs.push(mc);
         }
     }
-
     let ans1: i64 = costs.iter().sum();
-
-    // let mut ans1: i64 = 0;
-    // // costs.sort();
-    // for c in costs {
-    //     println!("c = {c}");
-    //     if c == i64::max_value() {
-    //         continue;
-    //     }
-    //     ans1 += c;
-    // }
     println!("day13, part1 = {ans1}");
+
+    let mut costs: Vec<i64> = vec![];
+    for m in &machines {
+        if let Some(mc) = min_cost(m, true) {
+            // println!("mc = {mc}");
+            costs.push(mc);
+        }
+    }
+    let ans1: i64 = costs.iter().sum();
+    println!("day13, part2 = {ans1}");
 }
